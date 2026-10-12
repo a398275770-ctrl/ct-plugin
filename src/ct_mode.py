@@ -12,7 +12,14 @@
 """
 import os
 import re
-import plugins.hooks as hooks
+try:
+    import plugins.hooks as hooks
+except ImportError:  # 独立测试/无宿主环境：提供 no-op stub
+    class _HooksStub:
+        @staticmethod
+        def register(event):
+            return lambda fn: fn  # 装饰器工厂 no-op
+    hooks = _HooksStub()
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CT_PROMPT_PATH = os.path.join(_PROJECT_ROOT, 'assets', 'ct_prompt.md')
