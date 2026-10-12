@@ -55,3 +55,7 @@ docs/               改造计划、问题清单、架构说明
 
 ## 维护约定（对 AI 协作者）
 改 `src/ct_mode.py` 前先跑 `./scripts/check.sh`；commit 前 7 测试必须全绿；每个批次独立 commit 可回滚。问题登记见 `docs/exec-plans/tech-debt-tracker.md`。
+
+
+## 装载机制（v2: 方向感知）
+`/ct on` 首轮注入主内核+速查表(~38KB)+装载指引；红队块/蓝队块由模型按 §1.2 判定任务方向后自行 file_read（A 方案）。全卷文件 ct_prompt.md 保留作为兼容备份。
