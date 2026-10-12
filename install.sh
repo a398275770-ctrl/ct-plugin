@@ -4,5 +4,11 @@ set -e
 GA_ROOT="${GA_ROOT:-/home/admin/GenericAgent}"
 cp "$(dirname "$0")/src/ct_mode.py" "$GA_ROOT/plugins/ct_mode.py"
 cp "$(dirname "$0")/src/ct_prompt.md" "$GA_ROOT/assets/ct_prompt.md"
-echo "已部署: $GA_ROOT/plugins/ct_mode.py + $GA_ROOT/assets/ct_prompt.md"
+cat > "$GA_ROOT/update-ct" <<'WRAP'
+#!/bin/bash
+# 一键更新 CT 插件：进 GA 目录敲 ./update-ct 即可
+exec bash "${CT_REPO:-/home/admin/ct-plugin}/update.sh"
+WRAP
+chmod +x "$GA_ROOT/update-ct"
+echo "已部署: $GA_ROOT/plugins/ct_mode.py + $GA_ROOT/assets/ct_prompt.md + $GA_ROOT/update-ct"
 echo "注意: 正在运行的 GA 会话需重启后生效"

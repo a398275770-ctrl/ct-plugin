@@ -19,9 +19,11 @@ git clone git@github.com:a398275770-ctrl/ct-plugin.git && cd ct-plugin
 # 3. 重启 GA，然后在会话里输入: /ct on
 ```
 
-## 已装过，只想要最新版（一键）
+## 已装过，只想要最新版（一键，两种任选）
 ```bash
-cd ct-plugin && ./update.sh    # 自动: 拉代码 → 测试 → 部署
+cd /home/admin/GenericAgent && ./update-ct   # 在 GA 目录里直接敲
+# 或
+cd ct-plugin && ./update.sh
 ```
 > `GA_ROOT=/你的GA路径 ./install.sh` 可覆盖默认部署目录
 
