@@ -14,13 +14,19 @@ _SRC = os.path.join(os.path.dirname(__file__), "..", "src", "ct_mode.py")
 
 def load_ct_mode(tmp_path, prompt_text="# CT RULES ...fake full prompt for test"):
     """把 ct_mode.py 加载为独立模块，并把规则文件指向临时文件。"""
-    pfile = tmp_path / "ct_prompt.md"
+    pfile = tmp_path / "ct_prompt_kernel.md"
     pfile.write_text(prompt_text, encoding="utf-8")
+    rfile = tmp_path / "ct_prompt_red.md"
+    rfile.write_text("# RED BLOCK fake\n", encoding="utf-8")
+    bfile = tmp_path / "ct_prompt_blue.md"
+    bfile.write_text("# BLUE BLOCK fake\n", encoding="utf-8")
     spec = importlib.util.spec_from_file_location("ct_mode_under_test", _SRC)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["ct_mode_under_test"] = mod
     spec.loader.exec_module(mod)
     mod._CT_PROMPT_PATH = str(pfile)
+    mod._RED_PATH = str(rfile)
+    mod._BLUE_PATH = str(bfile)
     return mod
 
 
@@ -45,7 +51,10 @@ def test_ct_on_injects_full_prompt_once(tmp_path):
     h = FakeHandler()
     out = run(mod, "/ct on", h)
     assert "CT RULES" in out and "fake full prompt" in out
-    assert "/ct" not in out
+    assert not __import__("re").search(r"^\\s*/ct\\s+on", out, __import__("re").M)  # 命令已剥离(ct_prompt文件名不算)
+    # A方案: 强装载指引必须注入
+    assert "方向块装载指引" in out and "禁止在未读取方向块的情况下产出交付物" in out
+    assert "ct_prompt_red.md" in out and "ct_prompt_blue.md" in out
     assert getattr(h.parent, "_ga_ct_mode_active", False) is True
     assert getattr(h.parent, "_ga_ct_mode_injected", False) is True
 
@@ -110,3 +119,34 @@ def test_multimodal_list_message(tmp_path):
     mod.ct_mode({"messages": msgs, "handler": h})
     texts = [b for b in msgs[0]["content"] if b["type"] == "text"]
     assert any("CT RULES" in b["text"] for b in texts)
+
+
+# ── 场景 8 (A方案): 首轮注入不含红/蓝块全文, 只含路径指引 ──────
+def test_kernel_only_injection(tmp_path):
+    mod = load_ct_mode(tmp_path)
+    h = FakeHandler()
+    out = run(mod, "/ct on", h)
+    assert "# RED BLOCK fake" not in out          # 红队块不预注入
+    assert "# BLUE BLOCK fake" not in out         # 蓝队块不预注入
+    assert "ct_prompt_red.md" in out              # 但路径必须可达
+
+
+# ── 场景 9 (A方案): 真实文件注入量上限 < 42KB ────────────────
+def test_real_injection_size_budget(tmp_path):
+    src = os.path.join(os.path.dirname(_SRC), "ct_prompt_kernel.md")
+    if not os.path.isfile(src):
+        pytest.skip("src/ct_prompt_kernel.md 不存在")
+    mod = load_ct_mode(tmp_path, prompt_text=open(src, encoding="utf-8").read())
+    h = FakeHandler()
+    out = run(mod, "/ct on", h)
+    injected = out  # 剥离命令后剩余即注入内容
+    assert len(injected.encode("utf-8")) < 42 * 1024, "首轮注入超预算"
+
+
+# ── 场景 10 (A方案): 后续轮锚点携带方向块路径(抗compaction) ──
+def test_anchor_carries_block_paths(tmp_path):
+    mod = load_ct_mode(tmp_path)
+    h = FakeHandler()
+    run(mod, "/ct on", h)
+    out2 = run(mod, "继续处理这道Web题", h)
+    assert "ct_prompt_red.md" in out2 and "ct_prompt_blue.md" in out2
