@@ -14,13 +14,13 @@ GA 插件，一条命令让整份 CT 攻防提示词（56KB）在本会话常驻
 
 ### Linux / macOS
 ```bash
-curl -fsSL https://raw.githubusercontent.com/a398275770-ctrl/ct-plugin/main/remote-install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/a398275770-ctrl/ga-plugin-ctf-world/main/remote-install.sh | sh
 ```
 GA 装在别处：`GA_ROOT=/路径` 加在命令前面。
 
 ### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/a398275770-ctrl/ct-plugin/main/remote-install.ps1 | iex
+irm https://raw.githubusercontent.com/a398275770-ctrl/ga-plugin-ctf-world/main/remote-install.ps1 | iex
 ```
 GA 装在别处：先执行 `$env:GA_ROOT="D:\GenericAgent"`。
 
