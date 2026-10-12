@@ -63,13 +63,63 @@ def _append_text(um, text):
         content.append({'type': 'text', 'text': text})
 
 
+def _get_parent(ctx):
+    """从 hook ctx 中防御性取出 Agent 实例（handler.parent）。"""
+    handler = ctx.get('handler') if isinstance(ctx, dict) else None
+    return getattr(handler, 'parent', None)
+
+
+def _inject_full_prompt(um, parent):
+    """注入规则全文（激活后首次），成功返回 True。"""
+    prompt = _load_ct_prompt()
+    if not prompt:
+        _append_text(um, "\n\n---\n[CT MODE] 规则文件缺失: %s\n---" % _CT_PROMPT_PATH)
+        return False
+    _append_text(um, "\n\n---\n[CT MODE] 以下为本项目常驻 CT 攻防规则（全文，仅本轮注入一次）：\n\n" + prompt + "\n---")
+    if parent is not None:
+        parent._ga_ct_mode_injected = True
+    return True
+
+
+def _inject_anchor(um):
+    """后续轮轻量锚点：提示规则已注入 + 抗 compaction 的文件指针。"""
+    _append_text(um, (
+        "\n\n---\n[CT MODE] 激活中。CT 攻防规则全文已在前文注入（含主内核/红队/蓝队/速查表，"
+        "触发词：寒霜 / REDBLUE）。若上文已被压缩丢失，请重新读取 %s 并继续遵循。\n---" % _CT_PROMPT_PATH
+    ))
+
+
+def _handle_command(um, content, raw, ctx):
+    """处理 /ct on|off：设置激活态、剥离命令、当轮注入全文（on 时）。"""
+    m = _CMD_RE.search(raw.strip())
+    if not m:
+        return False
+    _set_ct(ctx, m.group(1).lower() == 'on')
+    # 剥离命令本身（str 直接改；list 找最后一个含命令的 text block）
+    if isinstance(content, str):
+        um['content'] = _CMD_RE.sub('', raw, count=1).strip()
+    else:
+        for b in reversed(content):
+            if isinstance(b, dict) and b.get('type') == 'text' and _CMD_RE.search(b.get('text', '').strip()):
+                b['text'] = _CMD_RE.sub('', b['text'], count=1).strip()
+                break
+    active = _ct_active(ctx)
+    _append_text(um, (
+        f"\n\n---\n[CT MODE] {'已激活' if active else '已退出'}。"
+        + ("规则全文将在本轮注入。" if active else "后续轮不再注入 CT 规则。")
+        + "\n---"
+    ))
+    if active:
+        _inject_full_prompt(um, _get_parent(ctx))
+    return True
+
+
 @hooks.register('agent_before')
 def ct_mode(ctx):
     """每个用户轮起始：解析 /ct on|off 命令；激活态按轮注入全文或轻量锚点。"""
     um = _find_last_user_message(ctx)
     if um is None:
         return
-
     content = um.get('content')
     raw = content if isinstance(content, str) else next(
         (b.get('text', '') for b in content
@@ -78,52 +128,14 @@ def ct_mode(ctx):
         return
 
     # 1) 命令解析：/ct on | /ct off（从 user message 剥离，不发给模型）
-    m = _CMD_RE.search(raw.strip())
-    if m:
-        _set_ct(ctx, m.group(1).lower() == 'on')
-        # 剥离命令本身
-        stripped = _CMD_RE.sub('', raw, count=1).strip()
-        if isinstance(content, str):
-            um['content'] = stripped
-        else:
-            for b in reversed(content):
-                if isinstance(b, dict) and b.get('type') == 'text' and _CMD_RE.search(b.get('text', '').strip()):
-                    b['text'] = _CMD_RE.sub('', b['text'], count=1).strip()
-                    break
-        active = _ct_active(ctx)
-        _append_text(um, (
-            f"\n\n---\n[CT MODE] {'已激活' if active else '已退出'}。"
-            + ("规则全文将在本轮注入。" if active else "后续轮不再注入 CT 规则。")
-            + "\n---"
-        ))
-        if not active:
-            return
-        # fallthrough：on 的当轮立即注入全文
-        handler = ctx.get('handler') if isinstance(ctx, dict) else None
-        parent = getattr(handler, 'parent', None)
-        prompt = _load_ct_prompt()
-        if not prompt:
-            _append_text(um, "\n\n---\n[CT MODE] 规则文件缺失: %s\n---" % _CT_PROMPT_PATH)
-            return
-        _append_text(um, "\n\n---\n[CT MODE] 以下为本项目常驻 CT 攻防规则（全文，仅本轮注入一次）：\n\n" + prompt + "\n---")
-        parent._ga_ct_mode_injected = True
+    if _handle_command(um, content, raw, ctx):
         return
 
     # 2) 激活态注入
     if not _ct_active(ctx):
         return
-    handler = ctx.get('handler') if isinstance(ctx, dict) else None
-    parent = getattr(handler, 'parent', None)
-    injected = getattr(parent, '_ga_ct_mode_injected', False)
-    if not injected:
-        prompt = _load_ct_prompt()
-        if not prompt:
-            _append_text(um, "\n\n---\n[CT MODE] 规则文件缺失: %s\n---" % _CT_PROMPT_PATH)
-            return
-        _append_text(um, "\n\n---\n[CT MODE] 以下为本项目常驻 CT 攻防规则（全文，仅本轮注入一次）：\n\n" + prompt + "\n---")
-        parent._ga_ct_mode_injected = True
+    parent = _get_parent(ctx)
+    if getattr(parent, '_ga_ct_mode_injected', False):
+        _inject_anchor(um)
     else:
-        _append_text(um, (
-            "\n\n---\n[CT MODE] 激活中。CT 攻防规则全文已在前文注入（含主内核/红队/蓝队/速查表，"
-            "触发词：寒霜 / REDBLUE）。若上文已被压缩丢失，请重新读取 %s 并继续遵循。\n---" % _CT_PROMPT_PATH
-        ))
+        _inject_full_prompt(um, parent)
