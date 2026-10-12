@@ -4,7 +4,7 @@
 - 项目 / 仓库：GA ct_mode 插件（业务代码位于 `/home/admin/GenericAgent/plugins/ct_mode.py` + `/home/admin/GenericAgent/assets/ct_prompt.md`；本项目根 `/home/admin/ct-plugin` 承载文档与计划）
 - 分支：harnessing（当前无 git 仓库，见 TD-DOC-001）
 - 计划版本 / 日期：v1.0 / 2025-10-12
-- 状态：**待确认**
+- 状态：**已完成**
 
 ## 1. 项目概况
 - 技术栈：Python 3（单文件插件，无第三方依赖），宿主为 GenericAgent 插件系统（`plugins/hooks.py` 的 discover_and_load 自动发现 + `agent_before` 事件）
