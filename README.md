@@ -10,22 +10,29 @@ GA 插件，一条命令让整份 CT 攻防提示词（56KB）在本会话常驻
 ```
 命令不区分大小写，可带前后空格。运行中的 GA 需重启后新插件才被发现。
 
-## 三步上手（新电脑）
-```bash
-# 1. 克隆（首次需在新机器配置你自己的 GitHub SSH key）
-git clone git@github.com:a398275770-ctrl/ct-plugin.git && cd ct-plugin
-# 2. 安装到 GA
-./install.sh
-# 3. 重启 GA，然后在会话里输入: /ct on
-```
+## 一键安装
 
-## 已装过，只想要最新版（一键，两种任选）
+### Linux / macOS
 ```bash
-cd /home/admin/GenericAgent && ./update-ct   # 在 GA 目录里直接敲
-# 或
-cd ct-plugin && ./update.sh
+curl -fsSL https://raw.githubusercontent.com/a398275770-ctrl/ct-plugin/main/remote-install.sh | sh
 ```
-> `GA_ROOT=/你的GA路径 ./install.sh` 可覆盖默认部署目录
+GA 装在别处：`GA_ROOT=/路径` 加在命令前面。
+
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/a398275770-ctrl/ct-plugin/main/remote-install.ps1 | iex
+```
+GA 装在别处：先执行 `$env:GA_ROOT="D:\GenericAgent"`。
+
+装完重启 GA，在会话中输入 `/ct on` 即可启用。
+> 两种方式都自动完成：克隆到 `~/ct-plugin` → 运行测试 → 部署到 GA（要求机器已装 git 和 python3）。
+
+## 已装过，更新（一键）
+
+```bash
+cd ~/GenericAgent && ./update-ct          # Linux/macOS，在 GA 目录直接敲
+# Windows: powershell -ExecutionPolicy Bypass -File $HOME\ct-plugin\update.ps1
+```
 
 ## 开发
 ```bash
