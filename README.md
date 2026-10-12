@@ -10,11 +10,20 @@ GA 插件，一条命令让整份 CT 攻防提示词（56KB）在本会话常驻
 ```
 命令不区分大小写，可带前后空格。运行中的 GA 需重启后新插件才被发现。
 
-## 安装 / 更新
+## 三步上手（新电脑）
 ```bash
-./install.sh              # 部署 src/ → /home/admin/GenericAgent/{plugins,assets}/
-GA_ROOT=/path/to/ga ./install.sh
+# 1. 克隆（首次需在新机器配置你自己的 GitHub SSH key）
+git clone git@github.com:a398275770-ctrl/ct-plugin.git && cd ct-plugin
+# 2. 安装到 GA
+./install.sh
+# 3. 重启 GA，然后在会话里输入: /ct on
 ```
+
+## 已装过，只想要最新版（一键）
+```bash
+cd ct-plugin && ./update.sh    # 自动: 拉代码 → 测试 → 部署
+```
+> `GA_ROOT=/你的GA路径 ./install.sh` 可覆盖默认部署目录
 
 ## 开发
 ```bash
